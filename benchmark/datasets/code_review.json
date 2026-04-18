@@ -1,0 +1,87 @@
+{
+  "dataset_name": "code_review",
+  "version": "1.0",
+  "description": "Multi-agent code review pipeline scenarios",
+  "num_scenarios": 2,
+  "scenarios": [
+    {
+      "id": "cr_001",
+      "title": "Full stack PR review",
+      "agents": [
+        {"id": "style", "role": "Code style and formatting reviewer"},
+        {"id": "logic", "role": "Business logic and correctness reviewer"},
+        {"id": "security", "role": "Security vulnerability reviewer"},
+        {"id": "aggregator", "role": "Produces unified review feedback"}
+      ],
+      "pr_description": "Add user profile editing with image upload",
+      "steps": [
+        {
+          "agent": "style",
+          "expected_memories": [
+            {"content": "3 functions exceed 50-line limit in profile_controller.py", "tags": ["review", "style", "complexity"], "critical": false},
+            {"content": "Inconsistent naming: uses both camelCase and snake_case in models.py", "tags": ["review", "style", "naming"], "critical": false}
+          ]
+        },
+        {
+          "agent": "logic",
+          "expected_memories": [
+            {"content": "Off-by-one error in image resize: crops 1px too many on right edge", "tags": ["review", "logic", "bug"], "critical": true},
+            {"content": "Missing null check: profile.avatar can be None when user deletes photo", "tags": ["review", "logic", "bug"], "critical": true},
+            {"content": "Race condition: concurrent profile updates can overwrite each other", "tags": ["review", "logic", "concurrency"], "critical": true}
+          ]
+        },
+        {
+          "agent": "security",
+          "expected_memories": [
+            {"content": "Image upload allows SVG files — potential XSS via embedded scripts", "tags": ["review", "security", "xss"], "critical": true},
+            {"content": "No file size limit on upload — potential DoS vector", "tags": ["review", "security", "dos"], "critical": true},
+            {"content": "Profile update endpoint missing CSRF token validation", "tags": ["review", "security", "csrf"], "critical": true}
+          ]
+        },
+        {
+          "agent": "aggregator",
+          "context_check": {
+            "must_know": ["off-by-one", "race condition", "SVG XSS", "file size limit", "CSRF"],
+            "must_not_miss": ["security issues"]
+          },
+          "expected_memories": [
+            {"content": "Unified review: 3 critical security issues (XSS, DoS, CSRF), 2 logic bugs (off-by-one, race condition), 2 style issues", "tags": ["review", "summary"], "critical": true}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cr_002",
+      "title": "Database migration review",
+      "agents": [
+        {"id": "schema", "role": "Schema design reviewer"},
+        {"id": "performance", "role": "Query performance reviewer"},
+        {"id": "safety", "role": "Migration safety reviewer"}
+      ],
+      "pr_description": "Add multi-tenancy support to user and org tables",
+      "steps": [
+        {
+          "agent": "schema",
+          "expected_memories": [
+            {"content": "New tenant_id column added to 8 tables", "tags": ["review", "schema", "migration"], "critical": true},
+            {"content": "Missing foreign key constraint on tenant_id in audit_logs table", "tags": ["review", "schema", "integrity"], "critical": true}
+          ]
+        },
+        {
+          "agent": "performance",
+          "expected_memories": [
+            {"content": "Missing composite index on (tenant_id, user_id) — will cause full table scans", "tags": ["review", "performance", "index"], "critical": true},
+            {"content": "Backfill query will lock users table for estimated 45 minutes", "tags": ["review", "performance", "downtime"], "critical": true}
+          ]
+        },
+        {
+          "agent": "safety",
+          "expected_memories": [
+            {"content": "Migration is not reversible — no down migration provided", "tags": ["review", "safety", "rollback"], "critical": true},
+            {"content": "Existing rows default tenant_id to NULL — queries without tenant filter will return cross-tenant data", "tags": ["review", "safety", "data_leak"], "critical": true}
+          ]
+        }
+      ]
+    }
+  ]
+}

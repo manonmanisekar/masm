@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "masm"
+version = "0.2.0"
+description = "Multi-Agent Shared Memory: Benchmark and framework for AI agent memory coordination"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+readme = "README.md"
+dependencies = [
+    "numpy>=1.24",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+semantic = [
+    "openai>=1.0",
+    "tiktoken>=0.5",
+]
+redis = [
+    "redis[hiredis]>=5.0",
+]
+benchmarks = [
+    "openai>=1.0",
+    "mem0ai>=0.1",
+]
+viz = [
+    "graphviz>=0.20",   # Optional: only needed to auto-render DOT output as images
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+masm = "masm.__main__:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

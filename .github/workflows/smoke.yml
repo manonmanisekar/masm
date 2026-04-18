@@ -1,0 +1,124 @@
+name: smoke
+
+# Canary for the core conflict-resolution story. The research-vs-factchecker
+# example is the README's 90-second pitch; if its diff ever flattens (e.g. the
+# naive store accidentally starts returning the right answer, or MASM stops
+# detecting the conflict), something upstream broke the conflict path and the
+# unit tests may not catch it. Fail the build loudly instead.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Unit tests
+        run: python -m pytest -q
+
+      - name: Run research-vs-factchecker example
+        id: demo
+        run: |
+          python examples/research_vs_factchecker.py | tee demo.out
+
+      - name: Assert the naive-vs-MASM diff still exists
+        run: |
+          set -euo pipefail
+
+          # Naive store must silently return the WRONG year (2016).
+          grep -q "Final answer stored:  'Attention Is All You Need' was published in 2016." demo.out \
+            || { echo "::error::Naive baseline no longer returns the 2016 answer — demo's contrast is broken."; exit 1; }
+
+          # MASM must return the verified 2017 answer.
+          grep -q "Final answer stored:  'Attention Is All You Need' was published in 2017" demo.out \
+            || { echo "::error::MASM is no longer returning the verified 2017 answer — conflict resolution regressed."; exit 1; }
+
+          # MASM must have surfaced at least one conflict. The first occurrence
+          # in the file belongs to the naive section (and is always 0); we want
+          # the MASM section (after the "MASM —" banner).
+          python - <<'PY'
+          import re, sys
+          with open("demo.out") as f:
+              text = f.read()
+          masm_section = text.split("MASM — conflict-aware shared memory", 1)[-1]
+          m = re.search(r"Conflicts surfaced:\s+(\d+)", masm_section)
+          if not m or int(m.group(1)) < 1:
+              print("::error::MASM surfaced 0 conflicts — detector regressed.", file=sys.stderr)
+              sys.exit(1)
+          PY
+
+          # Research agent's trust must have dropped below the prior (0.50).
+          python - <<'PY'
+          import re, sys
+          with open("demo.out") as f:
+              text = f.read()
+          m = re.search(r"research_agent=([0-9.]+)", text)
+          if not m:
+              print("::error::Trust score line missing — TrustEngine wiring regressed.", file=sys.stderr)
+              sys.exit(1)
+          score = float(m.group(1))
+          if score >= 0.50:
+              print(f"::error::research_agent trust is {score:.2f} ≥ 0.50 prior — TrustEngine is no longer penalising conflict losses.", file=sys.stderr)
+              sys.exit(1)
+          PY
+
+      - name: Run supply-chain war-room example (13 agents)
+        run: |
+          python examples/supply_chain_war_room.py | tee supply.out
+
+      - name: Assert the 13-agent diff still exists
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import re, sys
+          text = open("supply.out").read()
+
+          # 1. Naive planner must still decide GO (wrong under the staged race).
+          if not re.search(r"Naive decision:\s+GO\b", text):
+              print("::error::Naive supply-chain planner no longer returns GO — the demo's contrast has flattened.", file=sys.stderr)
+              sys.exit(1)
+
+          # 2. MASM planner must still decide NO-GO (correct).
+          if not re.search(r"MASM decision:\s+NO-GO\b", text):
+              print("::error::MASM supply-chain planner is no longer returning NO-GO — conflict/forget path regressed.", file=sys.stderr)
+              sys.exit(1)
+
+          # 3. MASM section must surface at least 3 conflicts (5 expected; 3 is
+          #    the floor below which something has quietly regressed).
+          masm_section = text.split("MASM — conflict-aware shared memory", 1)[-1]
+          m = re.search(r"Conflicts surfaced:\s+(\d+)", masm_section)
+          if not m or int(m.group(1)) < 3:
+              print(f"::error::MASM surfaced {m.group(1) if m else 0} conflicts in the 13-agent demo; expected ≥ 3.", file=sys.stderr)
+              sys.exit(1)
+
+          # 4. At least one PII record must have been forgotten (cascade-forget path).
+          m = re.search(r"forgotten:\s+(\d+)", masm_section)
+          if not m or int(m.group(1)) < 1:
+              print("::error::Compliance cascade-forget regressed — no records marked forgotten.", file=sys.stderr)
+              sys.exit(1)
+
+          # 5. supplier_orion's trust must have risen above supplier_apex's.
+          m = re.search(r"supplier_apex=([0-9.]+)\s+supplier_orion=([0-9.]+)", masm_section)
+          if not m:
+              print("::error::Trust-score line missing from supply-chain output.", file=sys.stderr)
+              sys.exit(1)
+          apex, orion = float(m.group(1)), float(m.group(2))
+          if not (orion > apex):
+              print(f"::error::Trust ordering regressed: orion={orion:.2f} !> apex={apex:.2f}.", file=sys.stderr)
+              sys.exit(1)
+          print("All 13-agent demo invariants hold.")
+          PY

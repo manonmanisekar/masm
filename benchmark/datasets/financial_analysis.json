@@ -1,0 +1,102 @@
+{
+  "dataset_name": "financial_analysis",
+  "version": "1.0",
+  "description": "Multi-agent financial analysis workflows",
+  "num_scenarios": 2,
+  "scenarios": [
+    {
+      "id": "fa_001",
+      "title": "Quarterly earnings analysis",
+      "agents": [
+        {"id": "data_collector", "role": "Gathers financial data from reports"},
+        {"id": "analyst", "role": "Performs financial analysis"},
+        {"id": "risk_assessor", "role": "Evaluates risks and red flags"},
+        {"id": "report_writer", "role": "Produces investment summary"}
+      ],
+      "steps": [
+        {
+          "agent": "data_collector",
+          "expected_memories": [
+            {"content": "Q3 revenue: $4.2B (up 18% YoY)", "tags": ["financials", "revenue", "q3"], "critical": true},
+            {"content": "Operating margin: 22% (down from 25% last quarter)", "tags": ["financials", "margins", "q3"], "critical": true},
+            {"content": "Free cash flow: $800M", "tags": ["financials", "cashflow", "q3"], "critical": true},
+            {"content": "Guidance: Q4 revenue expected $4.5-4.7B", "tags": ["financials", "guidance", "q4"], "critical": true}
+          ]
+        },
+        {
+          "agent": "analyst",
+          "context_check": {"must_know": ["$4.2B revenue", "22% margin", "$800M FCF"]},
+          "expected_memories": [
+            {"content": "Revenue growth strong at 18% but margin compression of 3pts is concerning", "tags": ["analysis", "margins"], "critical": true},
+            {"content": "P/E ratio of 28x is above sector median of 22x — priced for growth", "tags": ["analysis", "valuation"], "critical": true}
+          ]
+        },
+        {
+          "agent": "risk_assessor",
+          "context_check": {"must_know": ["margin compression", "P/E ratio"]},
+          "expected_memories": [
+            {"content": "Risk: margin compression trend may continue if input costs rise", "tags": ["risk", "margins"], "critical": true},
+            {"content": "Risk: high valuation leaves little room for earnings miss", "tags": ["risk", "valuation"], "critical": true},
+            {"content": "Positive: strong FCF provides buffer for investment", "tags": ["risk", "positive"], "critical": true}
+          ]
+        },
+        {
+          "agent": "report_writer",
+          "context_check": {"must_know": ["18% revenue growth", "margin compression", "risk factors", "FCF"]},
+          "expected_memories": [
+            {"content": "Investment summary: HOLD — strong growth offset by margin pressure and elevated valuation", "tags": ["output", "recommendation"], "critical": true}
+          ]
+        }
+      ],
+      "conflicts": [
+        {
+          "memory_a": "Operating margin is 22%",
+          "memory_b": "Operating margin is 24% (adjusted for one-time charges)",
+          "resolution": "Both valid — 22% GAAP, 24% adjusted. Report both with context.",
+          "resolution_type": "merge"
+        }
+      ]
+    },
+    {
+      "id": "fa_002",
+      "title": "M&A due diligence",
+      "agents": [
+        {"id": "financial_dd", "role": "Financial due diligence"},
+        {"id": "legal_dd", "role": "Legal due diligence"},
+        {"id": "tech_dd", "role": "Technology due diligence"},
+        {"id": "deal_lead", "role": "Overall deal assessment"}
+      ],
+      "steps": [
+        {
+          "agent": "financial_dd",
+          "expected_memories": [
+            {"content": "Target ARR: $30M growing 45% YoY", "tags": ["dd", "financials", "revenue"], "critical": true},
+            {"content": "Burn rate: $2M/month, 18 months runway", "tags": ["dd", "financials", "runway"], "critical": true},
+            {"content": "Customer concentration: top 3 clients are 60% of revenue", "tags": ["dd", "financials", "risk"], "critical": true}
+          ]
+        },
+        {
+          "agent": "legal_dd",
+          "expected_memories": [
+            {"content": "Pending patent infringement lawsuit from competitor", "tags": ["dd", "legal", "risk"], "critical": true},
+            {"content": "Key employee contracts have 1-year non-competes", "tags": ["dd", "legal", "retention"], "critical": true}
+          ]
+        },
+        {
+          "agent": "tech_dd",
+          "expected_memories": [
+            {"content": "Tech stack is modern (Kubernetes, Go, React) — low integration risk", "tags": ["dd", "tech", "positive"], "critical": true},
+            {"content": "Technical debt: 15% of codebase flagged by static analysis", "tags": ["dd", "tech", "risk"], "critical": true}
+          ]
+        },
+        {
+          "agent": "deal_lead",
+          "context_check": {"must_know": ["$30M ARR", "customer concentration", "patent lawsuit", "tech debt"]},
+          "expected_memories": [
+            {"content": "Deal assessment: Proceed with caution — strong growth but legal and concentration risks. Recommend 20% valuation haircut.", "tags": ["dd", "recommendation"], "critical": true}
+          ]
+        }
+      ]
+    }
+  ]
+}

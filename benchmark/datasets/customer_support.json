@@ -1,0 +1,140 @@
+{
+  "dataset_name": "customer_support",
+  "version": "1.0",
+  "description": "Multi-agent customer support escalation scenarios",
+  "num_scenarios": 3,
+  "scenarios": [
+    {
+      "id": "cs_001",
+      "title": "Billing dispute with plan upgrade",
+      "agents": [
+        {"id": "greeter", "role": "Initial contact, gather info"},
+        {"id": "billing", "role": "Billing specialist"},
+        {"id": "retention", "role": "Customer retention"}
+      ],
+      "conversation_turns": [
+        {
+          "turn": 1,
+          "agent": "greeter",
+          "user_message": "I was charged twice for my subscription this month",
+          "expected_memories": [
+            {"content": "Customer reports double charge on subscription", "tags": ["billing", "double_charge"], "memory_type": "episodic", "critical": true}
+          ]
+        },
+        {
+          "turn": 2,
+          "agent": "greeter",
+          "user_message": "I'm on the Pro plan, been a customer for 3 years",
+          "expected_memories": [
+            {"content": "Customer is on Pro plan", "tags": ["plan", "pro"], "memory_type": "semantic", "critical": true},
+            {"content": "Customer tenure is 3 years", "tags": ["tenure", "loyalty"], "memory_type": "semantic", "critical": true}
+          ]
+        },
+        {
+          "turn": 3,
+          "agent": "billing",
+          "handoff_from": "greeter",
+          "context_check": {
+            "must_know": ["double charge", "Pro plan", "3 years"],
+            "must_not_ask_again": ["what plan are you on", "how long customer"]
+          }
+        }
+      ],
+      "conflicts": [
+        {
+          "memory_a": "Customer wants a refund",
+          "memory_b": "Customer wants to upgrade to Enterprise",
+          "resolution": "Both are true — customer wants refund for double charge AND is interested in upgrading",
+          "resolution_type": "merge"
+        }
+      ],
+      "forgetting_test": {
+        "target": "Customer's payment method details",
+        "should_forget": true,
+        "should_preserve": ["Customer had billing issue", "Issue was resolved"]
+      }
+    },
+    {
+      "id": "cs_002",
+      "title": "Technical support with multiple issues",
+      "agents": [
+        {"id": "greeter", "role": "Initial contact"},
+        {"id": "tech_l1", "role": "Level 1 technical support"},
+        {"id": "tech_l2", "role": "Level 2 engineering support"}
+      ],
+      "conversation_turns": [
+        {
+          "turn": 1,
+          "agent": "greeter",
+          "user_message": "My dashboard is loading very slowly and sometimes crashes",
+          "expected_memories": [
+            {"content": "Customer experiencing slow dashboard load times", "tags": ["performance", "dashboard"], "memory_type": "episodic", "critical": true},
+            {"content": "Dashboard occasionally crashes", "tags": ["bug", "crash", "dashboard"], "memory_type": "episodic", "critical": true}
+          ]
+        },
+        {
+          "turn": 2,
+          "agent": "tech_l1",
+          "handoff_from": "greeter",
+          "user_message": "It started after the last update, about 3 days ago",
+          "context_check": {
+            "must_know": ["slow dashboard", "crashes"],
+            "must_not_ask_again": ["what issue are you having"]
+          },
+          "expected_memories": [
+            {"content": "Issue started 3 days ago after latest update", "tags": ["timeline", "update"], "memory_type": "semantic", "critical": true}
+          ]
+        },
+        {
+          "turn": 3,
+          "agent": "tech_l2",
+          "handoff_from": "tech_l1",
+          "context_check": {
+            "must_know": ["slow dashboard", "crashes", "started after update", "3 days ago"],
+            "must_not_ask_again": ["when did this start", "what symptoms"]
+          }
+        }
+      ],
+      "conflicts": [],
+      "forgetting_test": null
+    },
+    {
+      "id": "cs_003",
+      "title": "Account cancellation with retention offer",
+      "agents": [
+        {"id": "greeter", "role": "Initial contact"},
+        {"id": "retention", "role": "Customer retention specialist"},
+        {"id": "manager", "role": "Account manager"}
+      ],
+      "conversation_turns": [
+        {
+          "turn": 1,
+          "agent": "greeter",
+          "user_message": "I want to cancel my account. The price is too high.",
+          "expected_memories": [
+            {"content": "Customer requesting account cancellation", "tags": ["cancellation", "churn"], "memory_type": "episodic", "critical": true},
+            {"content": "Reason for cancellation: price too high", "tags": ["cancellation", "pricing", "feedback"], "memory_type": "semantic", "critical": true}
+          ]
+        },
+        {
+          "turn": 2,
+          "agent": "retention",
+          "handoff_from": "greeter",
+          "context_check": {
+            "must_know": ["wants to cancel", "price too high"],
+            "must_not_ask_again": ["why are you leaving"]
+          }
+        }
+      ],
+      "conflicts": [
+        {
+          "memory_a": "Customer definitely wants to cancel",
+          "memory_b": "Customer accepted 20% discount offer and will stay",
+          "resolution": "Customer initially wanted to cancel but was retained with discount",
+          "resolution_type": "merge"
+        }
+      ],
+      "forgetting_test": null
+    }
+  ]
+}

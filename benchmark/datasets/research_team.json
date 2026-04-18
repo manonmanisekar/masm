@@ -1,0 +1,96 @@
+{
+  "dataset_name": "research_team",
+  "version": "1.0",
+  "description": "Multi-agent research synthesis workflows",
+  "num_scenarios": 2,
+  "scenarios": [
+    {
+      "id": "rt_001",
+      "title": "Market research synthesis",
+      "agents": [
+        {"id": "searcher", "role": "Finds relevant sources"},
+        {"id": "reader", "role": "Extracts key findings"},
+        {"id": "analyst", "role": "Analyzes and compares"},
+        {"id": "writer", "role": "Produces final report"}
+      ],
+      "steps": [
+        {
+          "agent": "searcher",
+          "expected_memories": [
+            {"content": "Found Gartner report: AI market to reach $200B by 2025", "tags": ["source", "market_size"], "critical": true},
+            {"content": "Found McKinsey study: 65% of enterprises adopting AI", "tags": ["source", "adoption"], "critical": true}
+          ]
+        },
+        {
+          "agent": "reader",
+          "context_check": {"must_know": ["Gartner report", "McKinsey study"]},
+          "expected_memories": [
+            {"content": "AI market growing at 37% CAGR per Gartner", "tags": ["finding", "growth_rate"], "critical": true},
+            {"content": "Enterprise AI adoption driven by cost reduction (45%) and efficiency (38%)", "tags": ["finding", "drivers"], "critical": true}
+          ]
+        },
+        {
+          "agent": "analyst",
+          "context_check": {"must_know": ["37% CAGR", "cost reduction", "efficiency"]},
+          "expected_memories": [
+            {"content": "AI market growth aligns with enterprise adoption trends — demand-driven growth", "tags": ["analysis", "insight"], "critical": true}
+          ]
+        },
+        {
+          "agent": "writer",
+          "context_check": {"must_know": ["$200B", "37% CAGR", "demand-driven growth"]},
+          "expected_memories": [
+            {"content": "Final report: AI market reaching $200B at 37% CAGR, driven by enterprise demand for cost reduction and efficiency", "tags": ["output", "report"], "critical": true}
+          ]
+        }
+      ],
+      "dedup_test": {
+        "duplicates": [
+          ["AI market to reach $200B", "AI market projected at $200 billion"],
+          ["65% of enterprises adopting AI", "Enterprise AI adoption rate is 65%"]
+        ]
+      }
+    },
+    {
+      "id": "rt_002",
+      "title": "Competitive analysis",
+      "agents": [
+        {"id": "monitor", "role": "Tracks competitor activity"},
+        {"id": "analyst", "role": "Assesses competitive impact"},
+        {"id": "strategist", "role": "Recommends response"}
+      ],
+      "steps": [
+        {
+          "agent": "monitor",
+          "expected_memories": [
+            {"content": "Competitor X launched AI assistant feature", "tags": ["competitor", "product_launch"], "critical": true},
+            {"content": "Competitor Y acquired ML startup for $50M", "tags": ["competitor", "acquisition"], "critical": true},
+            {"content": "Competitor X pricing is 20% lower than ours", "tags": ["competitor", "pricing"], "critical": true}
+          ]
+        },
+        {
+          "agent": "analyst",
+          "context_check": {"must_know": ["AI assistant", "acquisition", "pricing"]},
+          "expected_memories": [
+            {"content": "Competitive threat level: HIGH — two competitors making aggressive AI moves", "tags": ["analysis", "threat_level"], "critical": true}
+          ]
+        },
+        {
+          "agent": "strategist",
+          "context_check": {"must_know": ["HIGH threat level", "AI assistant", "pricing"]},
+          "expected_memories": [
+            {"content": "Recommended response: accelerate our AI roadmap, consider strategic partnership or acquisition", "tags": ["strategy", "recommendation"], "critical": true}
+          ]
+        }
+      ],
+      "conflicts": [
+        {
+          "memory_a": "Competitor X pricing is 20% lower",
+          "memory_b": "Competitor X announced 15% price increase",
+          "resolution": "Price increase announcement is more recent — competitor pricing gap narrowing",
+          "resolution_type": "winner_b"
+        }
+      ]
+    }
+  ]
+}
